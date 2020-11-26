@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - '.github/workflows/nightly.yml'
+  push:
+    branches: 
+      - ydcool-patch-1
 
 jobs:
   linux:
@@ -36,12 +39,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo add-apt-repository "deb [arch=arm64,s390x,ppc64el] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -sc) main" || true
-          sudo add-apt-repository "deb [arch=arm64,s390x,ppc64el] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -sc)-updates main" || true
+          sudo add-apt-repository "deb [arch=arm64,s390x,ppc64el,mips64el] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -sc) main" || true
+          sudo add-apt-repository "deb [arch=arm64,s390x,ppc64el,mips64el] http://ports.ubuntu.com/ubuntu-ports/ $(lsb_release -sc)-updates main" || true
 
           sudo dpkg --add-architecture arm64
           sudo dpkg --add-architecture s390x
           sudo dpkg --add-architecture ppc64el
+          sudo dpkg --add-architecture mips64el
 
           sudo apt-get update || true
 
@@ -49,10 +53,12 @@ jobs:
             crossbuild-essential-arm64 \
             crossbuild-essential-s390x \
             crossbuild-essential-ppc64el \
+            crossbuild-essential-mips64el \
             libseccomp-dev:amd64 \
             libseccomp-dev:arm64 \
             libseccomp-dev:s390x \
-            libseccomp-dev:ppc64el
+            libseccomp-dev:ppc64el \
+            libseccomp-dev:mips64el
 
       - name: Build amd64
         env:
@@ -91,6 +97,16 @@ jobs:
         run: |
           make binaries
           mv bin bin_ppc64le
+          
+      - name: Build mips64el
+        env:
+          GOOS: linux
+          GOARCH: mips64el
+          CGO_ENABLED: 1
+          CC: mips64el-linux-gnuabi64-gcc
+        run: |
+          make binaries
+          mv bin bin_mips64el
 
       #
       # Upload
@@ -119,6 +135,12 @@ jobs:
         with:
           name: linux_ppc64le
           path: src/github.com/containerd/containerd/bin_ppc64le
+        
+      - name: Upload artifacts (linux_mips64el)
+        uses: actions/upload-artifact@v1
+        with:
+          name: linux_mips64el
+          path: src/github.com/containerd/containerd/bin_mips64el
 
   windows:
     name: Windows
